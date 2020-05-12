@@ -1,7 +1,7 @@
 #!/bin/vbash
 # This script should be copied into:
 # /etc/ppp/ip-up.d/enable-ipv6-6rd.sh for Ubiquiti USG (On the actual gateway)
-# also /config/scripts/post-config.d/enable-ipv6-6rd.sh if you want the settings to survive provisioning.
+# /config/scripts/post-config.d/enable-ipv6-6rd.sh if you want the script to run after reboots
 # /config/scripts/ppp/ip-up.d/enable-ipv6-6rd.sh for Ubiquiti Edgerouter (needs confirmation)
 #
 #

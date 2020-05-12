@@ -4,7 +4,7 @@
         {
             "label": "Deploy 6rd-up Script",
             "type": "shell",
-            "command": "${workspaceFolder}/.vscode/upload-script.sh ${input:gatewayAddress} usg-upload.sh ${input:username}",
+            "command": "${workspaceFolder}/.vscode/usg-upload.sh ${input:gatewayAddress} enable-ipv6-6rd.sh ${input:username}",
             "problemMatcher": [],
             "group": {
                 "kind": "build",

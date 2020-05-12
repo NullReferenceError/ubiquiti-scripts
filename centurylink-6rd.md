@@ -15,6 +15,8 @@ We'll want to have this ready to attach to an interface in a moment, so
 let's prep it now. This is a simple firewall that will permit ICMP and any
 return traffic from outbound connections.
 
+This may not be needed for your specific configuration. Current versions of Unifi OS seem to create default firewall rules already (Under Routing & Firewall > Rules IPv6) that are named AUTHORIZED_GUESTSv6, GUESTv6_IN, GUESTv6_LOCAL, GUESTv6_OUT, LANv6_IN, LANv6_LOCAL, LANv6_OUT, WANv6_IN, WANv6_LOCAL, WANv6_OUT. These are referenced in the enable-ipv6-6rd.sh script.
+
     set firewall ipv6-name internet6-in enable-default-log
     set firewall ipv6-name internet6-in rule 10 action accept
     set firewall ipv6-name internet6-in rule 10 description 'Allow established connections'
@@ -44,16 +46,19 @@ these rules are applied to the `local` chain.
 
 Now that the prerequisites are out of the way, we will begin by creating a
 tunnel; we'll use `tun0`. Tunnels have transport configurations (the outer
-header) and their own addresses (the inner header).  
+header) and their own addresses (the inner header). This is automatically 
+handled by the enable-ipv6-6rd.sh script.
 
     set interfaces tunnel tun0 description 'CenturyLink 6rd Tunnel'
+    set interfaces tunnel tun0 6rd-default-gw 205.171.2.64
+    set interfaces tunnel tun0 6rd-prefix 2602::/24
     set interfaces tunnel tun0 encapsulation sit
-    set interfaces tunnel tun0 firewall in ipv6-name internet6-in
-    set interfaces tunnel tun0 firewall local ipv6-name internet6-in
+    set interfaces tunnel tun0 firewall in ipv6-name WANv6_IN
+    set interfaces tunnel tun0 firewall local ipv6-name WANv6_LOCAL
+    set interfaces tunnel tun0 firewall out ipv6-name WANv6_OUT 
     set interfaces tunnel tun0 local-ip 0.0.0.0
     set interfaces tunnel tun0 mtu 1472
-    set interfaces tunnel tun0 multicast enable
-    set interfaces tunnel tun0 remote-ip 205.171.2.64
+    set interfaces tunnel tun0 multicast disable
     set interfaces tunnel tun0 ttl 255
 
 We use `sit` to indicate this is an ipip tunnel. The firewall configurations
@@ -65,7 +70,9 @@ have a static ip, you can place it here instead. If you don't, leaving this
 automatic is one less configuration parameter to script updates on.
 
 The `mtu` setting accounts for the 20-byte IPv4 header and the 8-byte PPPoE
-header. The `remote-ip` field is the CenturyLink tunnel endpoint.
+header. The `6rd-default-gw` field is the CenturyLink tunnel endpoint. The 
+`6rd-prefix` is the IPv6 space designated by your ISP. The LAN device on the
+tunnel will be contained within this prefix space.
 
 ## Determining your prefix
 
@@ -106,7 +113,8 @@ prefix out to the CenturyLink tunnel server. Use a /128 on this interface.
 
 Because there is no "on net" IPv6 address on the other end of the tunnel,
 we use an interface route to send traffic for other IPv6 networks to the
-tunnel endpoint.
+tunnel endpoint. Most of this section is now handled within the Ubiquiti
+configuration when we set the `6rd-default-gw` property.
 
 We will also pin up a blackhole route for our /56 prefix to ensure that
 local traffic for unknown IPs belonging to us is discarded by our router 
@@ -119,6 +127,27 @@ At this point, you should be able to use `ping6` on your Ubiquiti router.
 Try `www.google.com`.
 
 ## Configure your LAN
+
+The enable-ipv6-6rd.sh script will attach the IPv6 properties directly to the configured LAN interface. 
+Below is an example of what it will prepare, using the configuration we've talked about earlier in the readme.
+
+    set interfaces ethernet eth1 address 2602:c6:3364:4eFF::/64
+    set interfaces ethernet eth1 ipv6 dup-addr-detect-transmits 1
+    set interfaces ethernet eth1 ipv6 router-advert cur-hop-limit 64
+    set interfaces ethernet eth1 ipv6 router-advert managed-flag false
+    set interfaces ethernet eth1 ipv6 router-advert max-interval 300
+    set interfaces ethernet eth1 ipv6 router-advert link-mtu 0
+    set interfaces ethernet eth1 ipv6 router-advert other-config-flag false
+    set interfaces ethernet eth1 ipv6 router-advert prefix "2602:c6:3364:4eFF::/64" autonomous-flag true
+    set interfaces ethernet eth1 ipv6 router-advert prefix "2602:c6:3364:4eFF::/64" on-link-flag true
+    set interfaces ethernet eth1 ipv6 router-advert prefix "2602:c6:3364:4eFF::/64" valid-lifetime 3600
+    set interfaces ethernet eth1 ipv6 router-advert reachable-time 0
+    set interfaces ethernet eth1 ipv6 router-advert retrans-timer 0
+    set interfaces ethernet eth1 ipv6 router-advert send-advert true
+    set interfaces ethernet eth1 ipv6 router-advert name-server "2001:428::1"
+    set interfaces ethernet eth1 ipv6 router-advert name-server "2001:428::2"
+
+If you are interested in creating an interface switch, continue reading.
 
 Assuming you have a single local network on `switch0`, you can pick a prefix
 (for example, `00`), and assign it to switch0:

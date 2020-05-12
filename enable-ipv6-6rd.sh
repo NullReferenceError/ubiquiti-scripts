@@ -25,6 +25,8 @@ export IP6_6RD_PREFIX="2602"
 export IP6_6RD_PREFIX_LEN="24"
 # This is an IP6 gateway tunnel bridge switch for centurylink
 export IP6_6RD_ROUTER="205.171.2.64"
+# This is used in calculating the prefix length of the WAN_6 address. (Centurylink Residential is typically 64, Business is 56)
+export WAN_6_PREFIX_LEN="64"
 
 # IPv6 supported DNS nameservers (Only need one of these enabled)
 #CenturyLink/qwest 
@@ -42,7 +44,6 @@ export TUN_STATUS=""
 export WAN_4_ADDR=""
 export WAN_6_OLD=""
 export WAN_6_NEW=""
-export WAN_6_PREFIX_LEN="64"
 
 
 # get_ip4() will pull the current IPv4 address from ipv4 addr for a specific device
@@ -75,7 +76,6 @@ get_ip6()
 # param $1 - An IP4 Address
 get_derived_ip6()
 {
-    # shellcheck disable=2046
     printf "$IP6_6RD_PREFIX:%02x:%02x%02x:%02x00::1\n" $(echo "$1" | tr . ' ')
 }
 

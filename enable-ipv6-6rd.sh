@@ -12,10 +12,13 @@
 # 
 
 # These may differ in your environment
+# TODO: switch these to params
 export DESCRIPTION="IPv6 6rd tunnel"
 export WAN_DEV="pppoe2"
 export LAN_DEV="eth1"
 export TUN_DEV="tun0"
+export CLEAN_CONFIG=true
+export DEBUG=true
 
 # These settings are specific to your ISP (CenturyLink shown)
 export IP6_6RD_PREFIX="2602"
@@ -92,8 +95,6 @@ get_derived_ip6()
 # global $IP6_NAMESERVERS - Any configured IPv6 DNS nameservers to configure the interface with
 apply_config()
 {
-    set -x
-
     if [ -n "$TUN_STATUS" ]; then
         # delete the existing tunnel interface
         ${SBIN}delete interfaces tunnel $TUN_DEV
@@ -111,7 +112,7 @@ apply_config()
     # ${SBIN}set protocols static route6 '::/0' next-hop "::${IP6_6RD_ROUTER}" interface $TUN_DEV
     ${SBIN}set interfaces tunnel $TUN_DEV 6rd-default-gw "::${IP6_6RD_ROUTER}"
     # older guides do not have remote-ip and local-ip configured
-    ${SBIN}set interfaces tunnel $TUN_DEV remote-ip "$IP6_6RD_ROUTER"
+    #${SBIN}set interfaces tunnel $TUN_DEV remote-ip "$IP6_6RD_ROUTER"
     ${SBIN}set interfaces tunnel $TUN_DEV local-ip "$WAN_4_ADDR"
     # another guide has multicast enabled
     ${SBIN}set interfaces tunnel $TUN_DEV multicast disable
@@ -143,17 +144,27 @@ apply_config()
 # global $SBIN - The Vyatta sbin/my_* location
 # global $TUN_DEV - The device to configure as the tunnel that we want to delete
 # global $LAN_DEV - The configured LAN device interface that we want to remove the IPv6 config from
-remove_config() 
+clean_config() 
 {
-    # Delete the tunnel
+    # Delete the configured tunnel
     ${SBIN}delete interfaces tunnel $TUN_DEV
     # Delete the IPv6 config from the $LAN_DEV
     ${SBIN}delete interfaces ethernet $LAN_DEV ipv6
+    # Delete the IPv6/prefix address if its configured
+    WAN_6_LAN=$(get_ip6 "$LAN_DEV")
+    if [ -n "$WAN_6_LAN" ]; then
+        ${SBIN}delete interfaces ethernet $LAN_DEV address $WAN_6_LAN/${WAN_6_PREFIX_LEN}
+    fi
 } 
 
 #################################################
 ##### Main script functionality starts here #####
 #################################################
+
+# If the debug switch was passed, be more verbose
+if [ -n $DEBUG ]; then
+    set -x
+fi
 
 if [ -n "$PPP_IFACE" ] && [ -n "$PPP_LOCAL" ]; then
     # called by ppp-up script Does this matter?
@@ -170,11 +181,23 @@ fi
 source /opt/vyatta/etc/functions/script-template
 configure
 
+#If clean is true, remove any existing configs
+if [ -n $CLEAN_CONFIG ]; then
+    echo "Cleaning old configs..."
+    clean_config && commit && save
+fi
+
+echo "Getting tunnel status..."
+
 # Get tunnel status from device
 TUN_STATUS=$(show interfaces tunnel "$TUN_DEV")
 
+echo "Determining IPv6 WAN address for $WAN_4_ADDR..."
+
 # Derive new wan address from public IP
 WAN_6_NEW=$(get_derived_ip6 "$WAN_4_ADDR")
+
+echo "IPv6 Address is $WAN_6_NEW"
 
 # If the tunnel exists, lets check the IPv6 Address
 if [ -n "$TUN_STATUS" ]; then
@@ -194,6 +217,8 @@ if [ -n "$WAN_6_OLD" ]; then
 else
     echo "Setting IPv6 $WAN_6_NEW"
 fi
+
+echo "Applying config..."
 
 # Apply config, commit, save
 apply_config && commit && save

@@ -100,6 +100,9 @@ apply_config()
         ${SBIN}delete interfaces tunnel $TUN_DEV
     fi
     # Configure the $TUN_DEV device
+    # older firmwares of edgerouter may need to set a static route with the following line:
+    # ${SBIN}set protocols static route6 '::/0' next-hop "::${IP6_6RD_ROUTER}" interface $TUN_DEV
+    ${SBIN}set interfaces tunnel $TUN_DEV 6rd-default-gw "::${IP6_6RD_ROUTER}"
     ${SBIN}set interfaces tunnel $TUN_DEV description "$DESCRIPTION"
     ${SBIN}set interfaces tunnel $TUN_DEV 6rd-prefix "${IP6_6RD_PREFIX}::/${IP6_6RD_PREFIX_LEN}"
     ${SBIN}set interfaces tunnel $TUN_DEV encapsulation sit
@@ -108,10 +111,8 @@ apply_config()
     ${SBIN}set interfaces tunnel $TUN_DEV firewall in ipv6-name WANv6_IN
     ${SBIN}set interfaces tunnel $TUN_DEV firewall local ipv6-name WANv6_LOCAL
     ${SBIN}set interfaces tunnel $TUN_DEV firewall out ipv6-name WANv6_OUT    
-    # older firmwares of edgerouter may need to set a static route with the following line:
-    # ${SBIN}set protocols static route6 '::/0' next-hop "::${IP6_6RD_ROUTER}" interface $TUN_DEV
-    ${SBIN}set interfaces tunnel $TUN_DEV 6rd-default-gw "::${IP6_6RD_ROUTER}"
     # older guides do not have remote-ip and local-ip configured
+    # Commenting this out as it seems to conflict
     #${SBIN}set interfaces tunnel $TUN_DEV remote-ip "$IP6_6RD_ROUTER"
     ${SBIN}set interfaces tunnel $TUN_DEV local-ip "$WAN_4_ADDR"
     # another guide has multicast enabled

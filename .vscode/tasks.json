@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Deploy 6rd-up Script",
+            "type": "shell",
+            "command": "${workspaceFolder}/.vscode/upload-script.sh ${input:gatewayAddress} usg-upload.sh ${input:username}",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "gatewayAddress",
+            "type": "promptString",
+            "description": "Address of the USG gateway",
+            "default": "192.168.1.1"
+        },{
+            "id": "username",
+            "type": "promptString",
+            "description": "Username to SCP the gateway",
+            "default": "root"
+        }
+    ]
+}
